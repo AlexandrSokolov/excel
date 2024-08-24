@@ -12,21 +12,24 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.util.Collections;
+import java.util.AbstractMap;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toMap;
+import static org.apache.poi.ss.usermodel.CellType.BLANK;
 import static org.apache.poi.ss.usermodel.CellType.NUMERIC;
 
 public class ExcelReaderService implements ExcelReaderApi {
@@ -35,19 +38,30 @@ public class ExcelReaderService implements ExcelReaderApi {
 
   static final String NOT_XLSX_FILE = "File is not valid XLSX format. Error: '%s'";
   static final String NOT_VALID_FILE = "Could not handle XLSX file. Error: '%s'";
+  public static final String CANNOT_CONVERT_WITHOUT_ATTRIBUTES_MAPPING =
+    "Cannot convert line to 'attribute -> value' mapping without configured 'column -> attribute' mapping.";
 
   private final Map<String, String> column2Attribute;
 
+  private final int headerLineNumber;
+
   public static ExcelReaderService instance(Map<String, String> column2Attribute) {
-    return new ExcelReaderService(column2Attribute);
+    return new ExcelReaderService(column2Attribute, 0);
+  }
+
+  public static ExcelReaderService instance(int headerLineNumber) {
+    return new ExcelReaderService(new HashMap<>(), headerLineNumber);
   }
 
   public static ExcelReaderService instance() {
-    return new ExcelReaderService(Collections.emptyMap());
+    return new ExcelReaderService(new HashMap<>(), 0);
   }
 
-  private ExcelReaderService(Map<String, String> column2Attribute) {
+  private ExcelReaderService(
+    Map<String, String> column2Attribute,
+    int headerLineNumber) {
     this.column2Attribute = column2Attribute;
+    this.headerLineNumber = headerLineNumber;
   }
 
   @Override
@@ -57,20 +71,28 @@ public class ExcelReaderService implements ExcelReaderApi {
     return catchWorkBook(inputStream,
       workBook -> StreamSupport.stream(
         workBook.getSheet(excelSheetName).spliterator(), false)
-          .map(this::fromRow));
+        .filter(this::anyCellIsNotEmpty)
+        .map(this::fromRow)
+        .filter(Objects::nonNull));
   }
 
-  @Override
   public Stream<ExcelLine> linesStream(
     final InputStream inputStream) {
     return catchWorkBook(inputStream,
       workBook -> StreamSupport.stream(
           workBook.getSheetAt(0).spliterator(), false)
-        .map(this::fromRow));
+        .filter(this::anyCellIsNotEmpty)
+        .map(this::fromRow)
+        .filter(Objects::nonNull));
   }
 
   @Override
   public Map<String, Object> transformer(ExcelLine excelLine) {
+    if (!excelLine.getColumnName2Attribute2Value().values().isEmpty()
+      && excelLine.getColumnName2Attribute2Value().values().stream().map(Map.Entry::getKey).allMatch(Objects::isNull)) {
+      throw new IllegalStateException(CANNOT_CONVERT_WITHOUT_ATTRIBUTES_MAPPING + "Line: \n" + excelLine);
+    }
+
     try {
       return excelLine.getColumnName2Attribute2Value().values().stream()
         .filter(entry -> StringUtils.isNoneEmpty(entry.getKey()))
@@ -111,6 +133,11 @@ public class ExcelReaderService implements ExcelReaderApi {
     return result;
   }
 
+  private boolean anyCellIsNotEmpty(Row row) {
+    return StreamSupport.stream(row.spliterator(), false)
+      .anyMatch(c -> !Objects.equals(BLANK, c.getCellType()));
+  }
+
   private <R> R catchWorkBook(final InputStream inputStream, Function<Workbook, R> consumer) {
     try (Workbook workbook = new XSSFWorkbook(inputStream)) {
       return consumer.apply(workbook);
@@ -124,7 +151,19 @@ public class ExcelReaderService implements ExcelReaderApi {
   }
 
   private ExcelLine fromRow(Row row) {
-    ExcelLine line = ExcelLine.instance(row.getRowNum() + 1);
+    int currentLineNumber = row.getRowNum() + 1;
+    if (headerLineNumber > 0) {
+      if (currentLineNumber == headerLineNumber) {
+        extractMappingFromHeaderLine(row);
+      }
+
+      //skip all the lines before the header line, including the header line
+      if (currentLineNumber <= headerLineNumber) {
+        return null;
+      }
+    }
+
+    ExcelLine line = ExcelLine.instance(currentLineNumber);
     StreamSupport.stream(row.spliterator(), false)
       .filter(this::isExpectedCellType)
       .forEach(cell -> {
@@ -132,6 +171,30 @@ public class ExcelReaderService implements ExcelReaderApi {
         line.put(columnName, column2Attribute.get(columnName), extractValue(cell));
       });
     return line;
+  }
+
+  private void extractMappingFromHeaderLine(final Row row) {
+    ExcelLine line = ExcelLine.instance(row.getRowNum() + 1);
+    if (!column2Attribute.isEmpty() && line.getExcelLineNumber() != headerLineNumber) {
+      throw new IllegalStateException("Wrong API usage. " +
+        "Mapping can be extracted only from the header line = '" + headerLineNumber + "'" +
+        "No mapping configuration must be predefined");
+    }
+    StreamSupport.stream(row.spliterator(), false)
+      .filter(this::isExpectedCellType)
+      .forEach(cell -> {
+        String columnName = CellReference.convertNumToColString(cell.getColumnIndex());
+        line.put(columnName, null, extractValue(cell));
+      });
+
+    column2Attribute.putAll(
+      line.getColumnName2Attribute2Value().entrySet().stream()
+        .filter(entry ->
+          entry.getValue() != null
+            && entry.getValue().getValue() != null
+            && StringUtils.isNoneEmpty(entry.getValue().getValue().toString()))
+        .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().getValue().toString()))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
   }
 
   private boolean isExpectedCellType(Cell cell) {

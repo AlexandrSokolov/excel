@@ -70,11 +70,14 @@ Instead of explicit configuration, like:
     "C", "Attribute #3");
   ```
 
-You extract the configuration from the 1st line.
+[You extract the configuration from the header line, see `ExcelReaderApiTest.testConfiguredFromLineReader()`](../src/test/java/com/savdev/commons/excel/api/ExcelReaderApiTest.java):
+```java
+ExcelReaderService.instance(HEADER_LINE_NUMBER)
+  .linesStream(EXCEL_SHEET_NAME, stream)
+  .toList();
+```
 
 Purpose: customer can move columns in the future. In your code you use only attribute names, to access value.
-
-TODO
 
 ### No-configuration, you access fields by column letters
 

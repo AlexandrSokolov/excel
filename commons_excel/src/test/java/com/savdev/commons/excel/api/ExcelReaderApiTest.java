@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.savdev.commons.excel.service.ExcelReaderService.CANNOT_CONVERT_WITHOUT_ATTRIBUTES_MAPPING;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
@@ -61,6 +62,44 @@ public class ExcelReaderApiTest {
   }
 
   /**
+   * The key-field configuration of Excel reader is taken from the header line in Excel
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testConfiguredFromLineReader() throws IOException {
+    try (InputStream stream = testPathUtils.testInputStream(EXCEL_FILE)) {
+      var lines = ExcelReaderService.instance(HEADER_LINE_NUMBER)
+        .linesStream(EXCEL_SHEET_NAME, stream)
+        .toList();
+
+      var line4 = lines.getFirst();
+      Assertions.assertEquals(4, line4.getExcelLineNumber());
+      //assert column attribute, extracted from the header line
+      Assertions.assertEquals("colA", line4.getColumnName2Attribute2Value().get("A").getKey());
+      //assert column value, extracted from the line
+      Assertions.assertEquals("line_4a", line4.getColumnName2Attribute2Value().get("A").getValue());
+
+      //assert column attribute, extracted from the header line
+      Assertions.assertEquals("money", line4.getColumnName2Attribute2Value().get("E").getKey());
+      //assert column value, extracted from the line
+      Assertions.assertEquals(new BigDecimal("32.5"), line4.getColumnName2Attribute2Value().get("E").getValue());
+
+      var line5 = lines.getLast();
+      Assertions.assertEquals(5, line5.getExcelLineNumber());
+      //assert column attribute, extracted from the header line
+      Assertions.assertEquals("colA", line5.getColumnName2Attribute2Value().get("A").getKey());
+      //assert column value, extracted from the line
+      Assertions.assertEquals("line_5a", line5.getColumnName2Attribute2Value().get("A").getValue());
+
+      //assert column attribute, extracted from the header line
+      Assertions.assertEquals("money", line5.getColumnName2Attribute2Value().get("E").getKey());
+      //assert column value, extracted from the line
+      Assertions.assertEquals(new BigDecimal("44.8"), line5.getColumnName2Attribute2Value().get("E").getValue());
+    }
+  }
+
+  /**
    * No key-field mapping configuration
    *
    * @throws IOException
@@ -72,7 +111,7 @@ public class ExcelReaderApiTest {
 
     try (InputStream stream = testPathUtils.testInputStream(EXCEL_FILE)) {
       //note: each line contains empty null value as `field`
-      var lines = notConifiguredExcelReaderApi.linesStream(EXCEL_SHEET_NAME, stream)
+      var lines = notConifiguredExcelReaderApi.linesStream(stream)
         .peek(line -> logger.info("column B value: " +
           line.getColumnName2Attribute2Value()
             .get("B")
@@ -100,11 +139,11 @@ public class ExcelReaderApiTest {
           .map(value -> (String) value)
           .map(StringUtils::isNoneEmpty)
           .isPresent()));
-      Assertions.assertEquals(3, validAndInvalid.size());
+      Assertions.assertEquals(2, validAndInvalid.size());
       //line #5 is valid, it has non-empty value in the `D` column
       Assertions.assertEquals(1, validAndInvalid.get(true).size());
       //line #3 and #4 have empty value in the `D` column
-      Assertions.assertEquals(2, validAndInvalid.get(false).size());
+      Assertions.assertEquals(1, validAndInvalid.get(false).size());
     }
   }
 
@@ -148,9 +187,9 @@ public class ExcelReaderApiTest {
           .map(excelReaderApi::transformer)
           .toList());
 
-      Assertions.assertEquals(
-        "todo",
-        exception.getMessage());
+      Assertions.assertTrue(
+        exception.getMessage()
+          .startsWith(CANNOT_CONVERT_WITHOUT_ATTRIBUTES_MAPPING));
     }
   }
 

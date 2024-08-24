@@ -1,5 +1,3 @@
-### configuration extracted from Excel line
-
 ### excel writer
 
 ### Stream of Excel lines as Java objects manually
