@@ -1,0 +1,177 @@
+package com.savdev.commons.excel.service;
+
+import com.savdev.commons.excel.api.ExcelReaderApi;
+import com.savdev.commons.excel.dto.ExcelLine;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.poi.UnsupportedFileFormatException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import static java.util.stream.Collectors.toMap;
+import static org.apache.poi.ss.usermodel.CellType.NUMERIC;
+
+public class ExcelReaderService implements ExcelReaderApi {
+
+  private static final Logger logger = LogManager.getLogger(ExcelReaderService.class.getName());
+
+  static final String NOT_XLSX_FILE = "File is not valid XLSX format. Error: '%s'";
+  static final String NOT_VALID_FILE = "Could not handle XLSX file. Error: '%s'";
+
+  private final Map<String, String> column2Attribute;
+
+  public static ExcelReaderService instance(Map<String, String> column2Attribute) {
+    return new ExcelReaderService(column2Attribute);
+  }
+
+  public static ExcelReaderService instance() {
+    return new ExcelReaderService(Collections.emptyMap());
+  }
+
+  private ExcelReaderService(Map<String, String> column2Attribute) {
+    this.column2Attribute = column2Attribute;
+  }
+
+  @Override
+  public Stream<ExcelLine> linesStream(
+    final String excelSheetName,
+    final InputStream inputStream) {
+    return catchWorkBook(inputStream,
+      workBook -> StreamSupport.stream(
+        workBook.getSheet(excelSheetName).spliterator(), false)
+          .map(this::fromRow));
+  }
+
+  @Override
+  public Stream<ExcelLine> linesStream(
+    final InputStream inputStream) {
+    return catchWorkBook(inputStream,
+      workBook -> StreamSupport.stream(
+          workBook.getSheetAt(0).spliterator(), false)
+        .map(this::fromRow));
+  }
+
+  @Override
+  public Map<String, Object> transformer(ExcelLine excelLine) {
+    try {
+      return excelLine.getColumnName2Attribute2Value().values().stream()
+        .filter(entry -> StringUtils.isNoneEmpty(entry.getKey()))
+        .collect(toMap(
+          Map.Entry::getKey,
+          Map.Entry::getValue));
+    } catch (Exception e) {
+      throw new IllegalStateException("Could not transform: " + excelLine + " to map, error: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Note: all attributes, that do not have the corresponding setter are silently skipped
+   * @param supplier of POJO. It cannot be java record
+   *
+   * @param attribute2Value you can get it via `transformer` method
+   * @param <R>
+   *
+   * @return
+   */
+  @Override
+  public <R> R transformer(Supplier<R> supplier, Map<String, Object> attribute2Value) {
+    R result = supplier.get(); //todo rewrite via streams
+    attribute2Value.entrySet().stream()
+      .filter(entry -> StringUtils.isNoneEmpty(entry.getKey()) && entry.getValue() != null)
+      .forEach(entry -> {
+        try {
+          Method setter = result.getClass()
+            .getDeclaredMethod("set" + StringUtils.capitalize(entry.getKey()),
+            entry.getValue().getClass());
+          setter.invoke(result, entry.getValue());
+        } catch (NoSuchMethodException e) {
+          logger.debug(() -> "No '" + "set" + StringUtils.capitalize(entry.getKey()) + "' setter.");
+        } catch (InvocationTargetException | IllegalAccessException e) {
+          throw new IllegalStateException(e);
+        }
+      });
+    return result;
+  }
+
+  private <R> R catchWorkBook(final InputStream inputStream, Function<Workbook, R> consumer) {
+    try (Workbook workbook = new XSSFWorkbook(inputStream)) {
+      return consumer.apply(workbook);
+    } catch (UnsupportedFileFormatException e){
+      throw new IllegalStateException(
+        String.format(NOT_XLSX_FILE, e.getMessage()));
+    } catch (IOException e) {
+      throw new IllegalStateException(
+        String.format(NOT_VALID_FILE, e.getMessage()));
+    }
+  }
+
+  private ExcelLine fromRow(Row row) {
+    ExcelLine line = ExcelLine.instance(row.getRowNum() + 1);
+    StreamSupport.stream(row.spliterator(), false)
+      .filter(this::isExpectedCellType)
+      .forEach(cell -> {
+        String columnName = CellReference.convertNumToColString(cell.getColumnIndex());
+        line.put(columnName, column2Attribute.get(columnName), extractValue(cell));
+      });
+    return line;
+  }
+
+  private boolean isExpectedCellType(Cell cell) {
+    switch (cell.getCellType()) {
+      case BLANK:
+      case STRING:
+      case NUMERIC:
+      case BOOLEAN: return true;
+      default: return false;
+    }
+  }
+
+  private Object extractValue(Cell cell){
+    if (cell == null) {
+      return null;
+    }
+
+    switch (cell.getCellType()) {
+      case BLANK: return null;
+      case STRING: return cell.getStringCellValue();
+      case NUMERIC: return fromNumericCell(cell);
+      case BOOLEAN: return cell.getBooleanCellValue();
+      default: throw new IllegalStateException("Unsupported cell type");
+    }
+  }
+
+  private Object fromNumericCell(Cell cell){
+    if (NUMERIC != cell.getCellType()) {
+      throw new IllegalStateException("Wrong API usage. Only for numeric cells could be used.");
+    }
+    if (cell.getCellStyle().getDataFormatString().contains("%")) {
+      return BigDecimal.valueOf(cell.getNumericCellValue() * 100);
+    } else if (DateUtil.isCellDateFormatted(cell)) {
+      if (cell.getCellStyle().getDataFormatString().startsWith("hh")) {
+        return cell.getLocalDateTimeCellValue().toLocalTime();
+      } else {
+        return cell.getLocalDateTimeCellValue();
+      }
+    } else {
+      return BigDecimal.valueOf(cell.getNumericCellValue());
+    }
+  }
+}
