@@ -25,6 +25,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.savdev.commons.excel.api.ExcelTestConstants.EXCEL_FILE;
+import static com.savdev.commons.excel.api.ExcelTestConstants.EXCEL_SHEET_NAME;
+import static com.savdev.commons.excel.api.ExcelTestConstants.HEADER_LINE_NUMBER;
 import static com.savdev.commons.excel.service.ExcelReaderService.CANNOT_CONVERT_WITHOUT_ATTRIBUTES_MAPPING;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -33,11 +36,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
   CommonsExcelDiConfig.class,
   TestExcelReaderConfig.class})
 public class ExcelReaderApiTest {
-
-  private static final String EXCEL_SHEET_NAME = "Test 1";
-  //in this line, line #3 defines attributes/fields
-  private static final Integer HEADER_LINE_NUMBER = 3;
-  private static final String EXCEL_FILE = "9Columns2Rows.xlsx";
 
   private static final Logger logger = LogManager.getLogger(ExcelReaderApiTest.class.getName());
 

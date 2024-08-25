@@ -1,7 +1,7 @@
 
-The purpose of this Excel reader is - to allow users to work with Excel lines in stream api way
+#### The purpose of this Excel Reader is - to allow users to work with Excel lines in stream api way
 
-### Options to stream excel:
+### How to use Excel Reade to stream excel lines:
 
 - [pre-configured mapping between Excel column letter(s) and named attribute](#pre-configured-excel-column-letters-to-named-attribute-mapping)
 - [configuration extracted from Excel line](#configuration-extracted-from-excel-line)
