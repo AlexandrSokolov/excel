@@ -19,9 +19,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.AbstractMap;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -45,23 +47,33 @@ public class ExcelReaderService implements ExcelReaderApi {
 
   private final int headerLineNumber;
 
+  private final Consumer<Map<String, String>> headerLineValidator;
+
   public static ExcelReaderService instance(Map<String, String> column2Attribute) {
-    return new ExcelReaderService(column2Attribute, 0);
+    return new ExcelReaderService(column2Attribute, 0, null);
   }
 
-  public static ExcelReaderService instance(int headerLineNumber) {
-    return new ExcelReaderService(new HashMap<>(), headerLineNumber);
+  public static ExcelReaderService instance(
+    final int headerLineNumber,
+    final Consumer<Map<String, String>> headerLineValidator) {
+    return new ExcelReaderService(
+      new HashMap<>(), //not immutable map!
+      headerLineNumber,
+      headerLineValidator);
   }
 
   public static ExcelReaderService instance() {
-    return new ExcelReaderService(new HashMap<>(), 0);
+    return new ExcelReaderService(
+      Collections.emptyMap(), 0, null);
   }
 
   private ExcelReaderService(
-    Map<String, String> column2Attribute,
-    int headerLineNumber) {
+    final Map<String, String> column2Attribute,
+    final int headerLineNumber,
+    final Consumer<Map<String, String>> headerLineValidator) {
     this.column2Attribute = column2Attribute;
     this.headerLineNumber = headerLineNumber;
+    this.headerLineValidator = headerLineValidator;
   }
 
   @Override
@@ -155,6 +167,7 @@ public class ExcelReaderService implements ExcelReaderApi {
     if (headerLineNumber > 0) {
       if (currentLineNumber == headerLineNumber) {
         extractMappingFromHeaderLine(row);
+        headerLineValidator.accept(column2Attribute);
       }
 
       //skip all the lines before the header line, including the header line

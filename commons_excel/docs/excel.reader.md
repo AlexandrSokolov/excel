@@ -70,9 +70,15 @@ Instead of explicit configuration, like:
     "C", "Attribute #3");
   ```
 
-[You extract the configuration from the header line, see `ExcelReaderApiTest.testConfiguredFromLineReader()`](../src/test/java/com/savdev/commons/excel/api/ExcelReaderApiTest.java):
+You extract the configuration from the header line by passing header line number.
+Additionally, you must pass header line validator.
+[See example in `ExcelReaderApiTest.testConfiguredFromLineReader()`](../src/test/java/com/savdev/commons/excel/api/ExcelReaderApiTest.java):
 ```java
-ExcelReaderService.instance(HEADER_LINE_NUMBER)
+ExcelReaderService.instance(
+  HEADER_LINE_NUMBER,
+  column2Attribute -> {
+    //validate here columns and attributes
+  })
   .linesStream(EXCEL_SHEET_NAME, stream)
   .toList();
 ```

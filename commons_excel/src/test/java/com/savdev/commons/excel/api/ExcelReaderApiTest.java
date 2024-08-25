@@ -22,6 +22,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.savdev.commons.excel.service.ExcelReaderService.CANNOT_CONVERT_WITHOUT_ATTRIBUTES_MAPPING;
@@ -68,8 +69,19 @@ public class ExcelReaderApiTest {
    */
   @Test
   public void testConfiguredFromLineReader() throws IOException {
+    var requiredAttributes = Set.of("colA", "colB");
     try (InputStream stream = testPathUtils.testInputStream(EXCEL_FILE)) {
-      var lines = ExcelReaderService.instance(HEADER_LINE_NUMBER)
+      var lines = ExcelReaderService.instance(
+        HEADER_LINE_NUMBER,
+        column2Attribute -> {
+          var notExisting = requiredAttributes.stream()
+            .filter(a -> !column2Attribute.containsValue(a))
+            .toList();
+          if (!notExisting.isEmpty()) {
+            throw new IllegalStateException("Required, but not existing attributes: '"
+              + notExisting + "' in Excel line #" + HEADER_LINE_NUMBER);
+          }
+        })
         .linesStream(EXCEL_SHEET_NAME, stream)
         .toList();
 
@@ -97,6 +109,34 @@ public class ExcelReaderApiTest {
       //assert column value, extracted from the line
       Assertions.assertEquals(new BigDecimal("44.8"), line5.getColumnName2Attribute2Value().get("E").getValue());
     }
+  }
+
+  @Test
+  public void testConfiguredFromLineHeaderValidationFailed() {
+    final var requiredAttributes = Set.of("colA", "colB", "colC", "colD");
+    Exception e = Assertions.assertThrows(
+      IllegalStateException.class,
+      () -> {
+        try (InputStream stream = testPathUtils.testInputStream(EXCEL_FILE)) {
+          ExcelReaderService.instance(
+              HEADER_LINE_NUMBER,
+              column2Attribute -> {
+                var notExisting = requiredAttributes.stream()
+                  .filter(a -> !column2Attribute.containsValue(a))
+                  .toList();
+                if (!notExisting.isEmpty()) {
+                  throw new IllegalStateException("Required, but not existing attributes: '"
+                    + notExisting + "' in Excel line #" + HEADER_LINE_NUMBER);
+                }
+              })
+            .linesStream(EXCEL_SHEET_NAME, stream)
+            .toList();
+        }
+      });
+    Assertions.assertEquals(
+      "Required, but not existing attributes: '[colC, colD]' in Excel line #3",
+      e.getMessage()
+    );
   }
 
   /**
