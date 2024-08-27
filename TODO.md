@@ -1,0 +1,1 @@
+### Add example of using excel, not as a library, to simplify copy-paste for new projects
