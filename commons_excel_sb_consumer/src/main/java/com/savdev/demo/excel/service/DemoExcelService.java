@@ -2,6 +2,9 @@ package com.savdev.demo.excel.service;
 
 import com.savdev.commons.excel.api.ExcelReaderApi;
 import com.savdev.commons.excel.api.ExcelWriterApi;
+import com.savdev.demo.excel.service.validation.collector.ValidationCollector;
+import com.savdev.demo.excel.service.validators.ColumnAValidator;
+import com.savdev.demo.excel.service.validators.ColumnEValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,15 +27,34 @@ public class DemoExcelService {
   @Autowired
   private ExcelWriterApi excelWriterApi;
 
+  @Autowired
+  private ColumnAValidator columnAValidator;
+
+  @Autowired
+  private ColumnEValidator columnEValidator;
+
   public List<Map<String, Object>> extractLines(InputStream inputStream) {
-    return excelReaderApi.linesStream(EXCEL_SHEET_NAME, inputStream)
+    var validatedItems = excelReaderApi.linesStream(EXCEL_SHEET_NAME, inputStream)
       .filter(excelLine -> excelLine.getExcelLineNumber() > HEADER_LINE_NUMBER)
-      .map(excelReaderApi::transformer)
-      .toList();
+      .collect(new ValidationCollector<>(
+        List.of(columnAValidator, columnEValidator),
+        excelReaderApi::transformer,
+        line -> "Line number: " + line.getExcelLineNumber()
+      ));
+    if (validatedItems.invalidItems().isEmpty()) {
+      return validatedItems.validItems();
+    } else {
+      return validatedItems.invalidItems().stream()
+        .map(invalidItem ->
+          Map.of(
+            "line", invalidItem.itemRepresentation(),
+            "errors", invalidItem.validationErrors()))
+        .toList();
+    }
   }
 
   public void downloadAsFile(List<Map<String, Object>> lines, OutputStream outputStream) {
-    try (InputStream template = getClass().getClassLoader().getResourceAsStream(EXCEL_TEMPLATE);) {
+    try (InputStream template = getClass().getClassLoader().getResourceAsStream(EXCEL_TEMPLATE)) {
       excelWriterApi.writeExcelTemplate(
         template,
         EXCEL_SHEET_NAME,

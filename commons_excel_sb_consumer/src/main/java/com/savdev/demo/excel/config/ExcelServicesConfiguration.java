@@ -9,14 +9,17 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;
 
+import static com.savdev.demo.excel.config.ExcelConstants.COLUMMN_A_ATTRIBUTE_NAME;
+import static com.savdev.demo.excel.config.ExcelConstants.COLUMMN_E_ATTRIBUTE_NAME;
+
 @Configuration
 public class ExcelServicesConfiguration {
 
   //attribute names for C and D are not set
   public final static Map<String, String> configuration = Map.of(
-      "A", "colA",
+      "A", COLUMMN_A_ATTRIBUTE_NAME,
       "B", "colB",
-      "E", "money",
+      "E", COLUMMN_E_ATTRIBUTE_NAME,
       "F", "persentage",
       "G", "someDate",
       "H", "time",

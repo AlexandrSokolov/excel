@@ -15,7 +15,14 @@
   ```
 2. [Add Excel Reader configuration, if you need file reading](src/main/java/com/savdev/demo/excel/config/ExcelServicesConfiguration.java)
 3. [Add Excel Service that exposes to the application the simplified API](src/main/java/com/savdev/demo/excel/service/DemoExcelService.java)
-4. [TODO add integration tests for excel service]
+4. [Add Excel file validation](#excel-validator)
+4. [TODO add integration tests for excel service]()
+
+### Excel validator:
+
+- See the core types in `com.savdev.demo.excel.service.validation` package
+- [`Validator` base interface and its fine-grained implementations](src/main/java/com/savdev/demo/excel/service/validation/Validator.java)
+- [See validation example in `DemoExcelService.extractLines()`](src/main/java/com/savdev/demo/excel/service/DemoExcelService.java)
 
 ### Adding rest endpoints if needed
 
@@ -38,7 +45,12 @@ cd commons_excel_sb_consumer
 curl -J -X POST -w "\n" -H 'Content-Type: application/json' -d @./src/test/resources/lines.json -o ./target/t.xlsx http://localhost:8080/rest/excel/download
 ```
 
-Test file uploading and getting back the extracted lines:
+Test (previously downloaded as `target/t.xlsx`) file uploading and getting back the extracted lines:
 ```bash
 curl -w "\n" -F "fileName=test.xlsx" -F file=@./target/t.xlsx http://localhost:8080/rest/excel/upload
+```
+
+Test file validation during uploading:
+```bash
+curl -w "\n" -F "fileName=test.xlsx" -F file=@./src/test/resources/not.valid.xlsx http://localhost:8080/rest/excel/upload
 ```
