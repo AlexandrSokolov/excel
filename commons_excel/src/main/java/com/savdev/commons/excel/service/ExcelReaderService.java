@@ -18,19 +18,13 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.util.AbstractMap;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static java.util.stream.Collectors.toMap;
 import static org.apache.poi.ss.usermodel.CellType.BLANK;
 import static org.apache.poi.ss.usermodel.CellType.NUMERIC;
 
@@ -57,7 +51,7 @@ public class ExcelReaderService implements ExcelReaderApi {
     final int headerLineNumber,
     final Consumer<Map<String, String>> headerLineValidator) {
     return new ExcelReaderService(
-      new HashMap<>(), //not immutable map!
+      new LinkedHashMap<>(), //not immutable map!
       headerLineNumber,
       headerLineValidator);
   }
@@ -108,9 +102,9 @@ public class ExcelReaderService implements ExcelReaderApi {
     try {
       return excelLine.getColumnName2Attribute2Value().values().stream()
         .filter(entry -> StringUtils.isNoneEmpty(entry.getKey()))
-        .collect(toMap(
-          Map.Entry::getKey,
-          Map.Entry::getValue));
+        .collect(LinkedHashMap::new,
+          (m, v)-> m.put(v.getKey(), v.getValue()),
+          Map::putAll);
     } catch (Exception e) {
       throw new IllegalStateException("Could not transform: " + excelLine + " to map, error: " + e.getMessage());
     }
@@ -207,7 +201,9 @@ public class ExcelReaderService implements ExcelReaderApi {
             && entry.getValue().getValue() != null
             && StringUtils.isNoneEmpty(entry.getValue().getValue().toString()))
         .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().getValue().toString()))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+        .collect(LinkedHashMap::new,
+          (m, v)-> m.put(v.getKey(), v.getValue()),
+          Map::putAll));
   }
 
   private boolean isExpectedCellType(Cell cell) {

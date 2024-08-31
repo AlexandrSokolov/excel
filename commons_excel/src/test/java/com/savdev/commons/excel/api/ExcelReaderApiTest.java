@@ -111,7 +111,7 @@ public class ExcelReaderApiTest {
 
   @Test
   public void testConfiguredFromLineHeaderValidationFailed() {
-    final var requiredAttributes = Set.of("colA", "colB", "colC", "colD");
+    final var requiredAttributes = List.of("colA", "colB", "colC", "colD");
     Exception e = Assertions.assertThrows(
       IllegalStateException.class,
       () -> {
