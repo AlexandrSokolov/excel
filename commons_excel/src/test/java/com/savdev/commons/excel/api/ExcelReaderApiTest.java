@@ -60,6 +60,25 @@ public class ExcelReaderApiTest {
     }
   }
 
+  @Test
+  public void testAccessExcelLineAttributes() throws IOException {
+    try (InputStream stream = testPathUtils.testInputStream(EXCEL_FILE)) {
+      var lines = excelReaderApi.linesStream(EXCEL_SHEET_NAME, stream).toList();
+      Assertions.assertEquals(
+        "line_5a",
+        lines.getLast()
+          .valueByColumn("A")
+          .map(Object::toString)
+          .orElseThrow(() -> new IllegalStateException("no value found by column 'A'")));
+      Assertions.assertEquals(
+        "line_5b",
+        lines.getLast()
+          .valueByAttributeName("colB")
+          .map(Object::toString)
+          .orElseThrow(() -> new IllegalStateException("no value found by attribute 'colB'")));
+    }
+  }
+
   /**
    * The key-field configuration of Excel reader is taken from the header line in Excel
    *

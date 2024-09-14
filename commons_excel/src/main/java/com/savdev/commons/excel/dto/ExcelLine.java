@@ -31,6 +31,14 @@ public class ExcelLine {
       .map(Map.Entry::getValue);
   }
 
+  public Optional<Object> valueByAttributeName(final String attributeName) {
+    return Optional.ofNullable(columnName2Attribute2Value.values().stream()
+      .collect(LinkedHashMap::new,
+        (m, v) -> m.put(v.getKey(), v.getValue()),
+        Map::putAll)
+      .get(attributeName));
+  }
+
   public Map<String, Map.Entry<String,  Object>> getColumnName2Attribute2Value() {
     return columnName2Attribute2Value;
   }

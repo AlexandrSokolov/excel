@@ -9,6 +9,7 @@
 - [covert stream of lines to Java POJO with transformers](#stream-of-excel-lines-as-java-pojos-with-transformer)
 - [covert stream of lines to Java types manually](#stream-of-excel-lines-as-java-objects-manually)
 - [Excel lines filter and validation](#excel-lines-filter-and-validation)
+- [Access `ExcelLine` attributes](#access-excelline-attributes)
 - [`ExcelLine` class/abstraction](#excelline-classabstraction)
 
 ### Pre-configured Excel column letter(s) to named attribute mapping
@@ -170,3 +171,28 @@ The value could be any of the following Java Data Type:
 - `LocalDateTime` (also dates are defined as `LocalDateTime`)
 - `LocalTime`
 - `Boolean`
+
+### Access `ExcelLine` attributes
+
+Use `ExcelLine.valueByColumn` or `ExcelLine.valueByAttributeName`:
+
+For Excel:
+
+|    A    |    B    |
+|:-------:|:-------:|
+|  colA   |  colB   |
+| line_5a | line_5b |
+
+```java
+var line = ...
+Assertions.assertEquals(
+  "line_5a",
+  line.valueByColumn("A")
+    .map(Object::toString)
+    .orElseThrow(() -> new IllegalStateException("no value found by column 'A'")));
+Assertions.assertEquals(
+  "line_5b",
+  line.valueByAttributeName("colB")
+    .map(Object::toString)
+    .orElseThrow(() -> new IllegalStateException("no value found by attribute 'colB'")));
+```
