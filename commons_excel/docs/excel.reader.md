@@ -10,6 +10,7 @@
 - [covert stream of lines to Java types manually](#stream-of-excel-lines-as-java-objects-manually)
 - [Excel lines filter and validation](#excel-lines-filter-and-validation)
 - [Access `ExcelLine` attributes](#access-excelline-attributes)
+- [Get excel line number from `Map<String, Object` transformed map](#get-excel-line-number-from-mapstring-object-transformed-map)
 - [`ExcelLine` class/abstraction](#excelline-classabstraction)
 
 ### Pre-configured Excel column letter(s) to named attribute mapping
@@ -195,4 +196,12 @@ Assertions.assertEquals(
   line.valueByAttributeName("colB")
     .map(Object::toString)
     .orElseThrow(() -> new IllegalStateException("no value found by attribute 'colB'")));
+```
+
+### Get excel line number from `Map<String, Object` transformed map
+
+Use `ExcelReaderApi.EXCEL_LINE_NUMBER` as a key:
+```java
+var lineAsMap = ...
+var excelLineNumber = lineAsMap.get(EXCEL_LINE_NUMBER));
 ```
