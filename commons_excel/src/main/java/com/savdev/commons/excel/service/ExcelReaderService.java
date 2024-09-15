@@ -100,9 +100,11 @@ public class ExcelReaderService implements ExcelReaderApi {
     }
 
     try {
+      var map = new LinkedHashMap<String, Object>();
+      map.put(EXCEL_LINE_NUMBER, excelLine.getExcelLineNumber());
       return excelLine.getColumnName2Attribute2Value().values().stream()
         .filter(entry -> StringUtils.isNoneEmpty(entry.getKey()))
-        .collect(LinkedHashMap::new,
+        .collect(() -> map,
           (m, v)-> m.put(v.getKey(), v.getValue()),
           Map::putAll);
     } catch (Exception e) {

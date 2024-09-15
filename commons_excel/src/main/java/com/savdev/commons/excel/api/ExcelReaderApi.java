@@ -9,6 +9,8 @@ import java.util.stream.Stream;
 
 public interface ExcelReaderApi {
 
+  String EXCEL_LINE_NUMBER = "EXCEL_LINE_NUMBER";
+
   /**
    * Excel lines as stream for the 1st Excel sheet
    *

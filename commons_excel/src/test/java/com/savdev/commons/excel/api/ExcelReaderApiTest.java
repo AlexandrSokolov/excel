@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.savdev.commons.excel.api.ExcelReaderApi.EXCEL_LINE_NUMBER;
 import static com.savdev.commons.excel.api.ExcelTestConstants.EXCEL_FILE;
 import static com.savdev.commons.excel.api.ExcelTestConstants.EXCEL_SHEET_NAME;
 import static com.savdev.commons.excel.api.ExcelTestConstants.HEADER_LINE_NUMBER;
@@ -218,6 +219,9 @@ public class ExcelReaderApiTest {
         .filter(excelLine -> excelLine.getExcelLineNumber() > HEADER_LINE_NUMBER)
         .map(excelReaderApi::transformer)
         .toList();
+
+      Assertions.assertEquals(4, result.getFirst().get(EXCEL_LINE_NUMBER));
+
       //check that all "fields" are extracted according to the configuration
       Assertions.assertTrue(result.stream().allMatch(
         line -> TestExcelReaderConfig.configuration
