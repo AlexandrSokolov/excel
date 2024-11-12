@@ -61,22 +61,31 @@ Pass `null` as `sheetName` parameter.
 
 ### Create Excel as InputStream to pass it further
 
-[See `ExcelWriterApiTest.testWriteExcelIntoInputStream()`](../src/test/java/com/savdev/commons/excel/api/ExcelWriterApiTest.java)
-
-```java
-    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      excelWriterApi.writeExcel(
-        EXCEL_SHEET_NAME,
-        1, //no template, no header
-        excelLines(),
-        outputStream);
-      try (InputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray())) {
-        var targetFile = tempFile();
-        Files.copy(
-          inputStream,
-          targetFile.toPath(),
-          StandardCopyOption.REPLACE_EXISTING);
-        System.out.println(targetFile.getAbsolutePath());
-      }
+- [See `ExcelWriterApiTest.testWriteExcelAsInputStreamNoTemplate()`](../src/test/java/com/savdev/commons/excel/api/ExcelWriterApiTest.java)
+    ```java
+    try (InputStream inputStream = excelWriterApi.writeExcelAsInputStream(
+      EXCEL_SHEET_NAME,
+      1, //no template, no header
+      excelLines())) {
+      ...
     }
-```
+    ```
+- [See `ExcelWriterApiTest.testWriteExcelAsInputStreamWithTemplate()`](../src/test/java/com/savdev/commons/excel/api/ExcelWriterApiTest.java)
+- [See `ExcelWriterApiTest.testWriteExcelIntoInputStream()`](../src/test/java/com/savdev/commons/excel/api/ExcelWriterApiTest.java)
+    ```java
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+          excelWriterApi.writeExcel(
+            EXCEL_SHEET_NAME,
+            1, //no template, no header
+            excelLines(),
+            outputStream);
+          try (InputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray())) {
+            var targetFile = tempFile();
+            Files.copy(
+              inputStream,
+              targetFile.toPath(),
+              StandardCopyOption.REPLACE_EXISTING);
+            System.out.println(targetFile.getAbsolutePath());
+          }
+        }
+    ```

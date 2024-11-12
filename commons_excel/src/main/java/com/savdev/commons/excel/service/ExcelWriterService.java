@@ -10,15 +10,46 @@ import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 public class ExcelWriterService implements ExcelWriterApi {
+
+  @Override
+  public InputStream writeExcelAsInputStream(
+    final InputStream excelTemplate,
+    final String sheetName,
+    final int firstLineNumber,
+    final List<Map<String, Object>> rows) {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      writeExcelTemplate(
+        excelTemplate,
+        sheetName,
+        1, //no template, no header
+        rows,
+        outputStream);
+      return new ByteArrayInputStream(outputStream.toByteArray());
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  @Override
+  public InputStream writeExcelAsInputStream(String sheetName, int firstLineNumber, List<Map<String, Object>> rows) {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      writeExcel(
+        sheetName,
+        1, //no template, no header
+        rows,
+        outputStream);
+      return new ByteArrayInputStream(outputStream.toByteArray());
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
 
   @Override
   public void writeExcelTemplate(

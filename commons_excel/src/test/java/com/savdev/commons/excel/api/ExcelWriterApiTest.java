@@ -32,6 +32,73 @@ public class ExcelWriterApiTest {
   @TempDir
   Path tempTestFolder;
 
+  /**
+   * Write Excel and return it as InputStream
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteExcelAsInputStreamNoTemplate() throws IOException {
+    try (InputStream inputStream = excelWriterApi.writeExcelAsInputStream(
+      EXCEL_SHEET_NAME,
+      1, //no template, no header
+      excelLines())) {
+      var targetFile = tempFile();
+      Files.copy(
+        inputStream,
+        targetFile.toPath(),
+        StandardCopyOption.REPLACE_EXISTING);
+      System.out.println(targetFile.getAbsolutePath());
+    }
+  }
+
+  /**
+   * Write Excel and return it as InputStream
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteExcelAsInputStreamWithTemplate() throws IOException {
+    try (InputStream template = testPathUtils.testInputStream(TEMPLATE);
+      InputStream inputStream = excelWriterApi.writeExcelAsInputStream(
+        template,
+      EXCEL_SHEET_NAME,
+        HEADER_LINE_NUMBER + 1,
+      excelLines())) {
+      var targetFile = tempFile();
+      Files.copy(
+        inputStream,
+        targetFile.toPath(),
+        StandardCopyOption.REPLACE_EXISTING);
+      System.out.println(targetFile.getAbsolutePath());
+    }
+  }
+
+  /**
+   * The content of Excel is put into the InputStream
+   *  and then is saved into the temp file, to check the content
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteExcelIntoInputStream2() throws IOException {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      excelWriterApi.writeExcel(
+        EXCEL_SHEET_NAME,
+        1, //no template, no header
+        excelLines(),
+        outputStream);
+      try (InputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray())) {
+        var targetFile = tempFile();
+        Files.copy(
+          inputStream,
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING);
+        System.out.println(targetFile.getAbsolutePath());
+      }
+    }
+  }
+
   @Test
   public void testWriteExcelTemplate() throws IOException {
     var tempFile = tempFile();
@@ -74,31 +141,6 @@ public class ExcelWriterApiTest {
         excelLines(),
         outputStream);
       System.out.println(tempFile.getAbsolutePath());
-    }
-  }
-
-  /**
-   * The content of Excel is put into the InputStream
-   *  and then is saved into the temp file, to check the content
-   *
-   * @throws IOException
-   */
-  @Test
-  public void testWriteExcelIntoInputStream() throws IOException {
-    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      excelWriterApi.writeExcel(
-        EXCEL_SHEET_NAME,
-        1, //no template, no header
-        excelLines(),
-        outputStream);
-      try (InputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray())) {
-        var targetFile = tempFile();
-        Files.copy(
-          inputStream,
-          targetFile.toPath(),
-          StandardCopyOption.REPLACE_EXISTING);
-        System.out.println(targetFile.getAbsolutePath());
-      }
     }
   }
 

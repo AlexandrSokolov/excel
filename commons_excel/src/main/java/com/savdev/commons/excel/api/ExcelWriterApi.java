@@ -7,6 +7,17 @@ import java.util.Map;
 
 public interface ExcelWriterApi {
 
+  InputStream writeExcelAsInputStream(
+    InputStream excelTemplate,
+    String sheetName,
+    int firstLineNumber,
+    List<Map<String,Object>> rows);
+
+  InputStream writeExcelAsInputStream(
+    String sheetName,
+    int firstLineNumber,
+    List<Map<String,Object>> rows);
+
   void writeExcelTemplate(
     InputStream excelTemplate,
     String sheetName,
