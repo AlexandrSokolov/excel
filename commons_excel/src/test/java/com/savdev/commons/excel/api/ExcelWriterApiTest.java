@@ -8,12 +8,11 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ContextConfiguration;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 
@@ -75,6 +74,31 @@ public class ExcelWriterApiTest {
         excelLines(),
         outputStream);
       System.out.println(tempFile.getAbsolutePath());
+    }
+  }
+
+  /**
+   * The content of Excel is put into the InputStream
+   *  and then is saved into the temp file, to check the content
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteExcelIntoInputStream() throws IOException {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      excelWriterApi.writeExcel(
+        EXCEL_SHEET_NAME,
+        1, //no template, no header
+        excelLines(),
+        outputStream);
+      try (InputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray())) {
+        var targetFile = tempFile();
+        Files.copy(
+          inputStream,
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING);
+        System.out.println(targetFile.getAbsolutePath());
+      }
     }
   }
 
